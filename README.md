@@ -37,8 +37,11 @@ sudo apt install rustc
 
 ## Run program
 
+-   RUST_BACKTRACE: Displays an entire backtrace of errors
+-   RUST_LOG: Select the log level desired to show in the output (info/warning/error)
+
 ```bash
-cargo run
+RUST_BACKTRACE=1 RUST_LOG=info cargo run
 ```
 
 ## Input values
