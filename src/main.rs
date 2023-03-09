@@ -1,5 +1,7 @@
-use env_logger;
-use std::io;
+use csv::Writer;
+use env_logger; // Basic logger
+use std::fs::OpenOptions; //Filesystem
+use std::io; // Input/Ouptut reader // CSV file writter
 
 #[macro_use]
 extern crate log;
@@ -13,9 +15,15 @@ fn main() {
     let _sampling_freq = read_number("Sampling Frequency (Hz): ");
     let _modulation_freq = read_number("Modulation Frequency (Hz): ");
     let _simb_freq = read_number("Sampling Frequency (sinbol/s): ");
-    let _bit_data = read_even_bit_array_from_console("Enter input data stream: ");
+    let bit_data = read_even_bit_array_from_console("Enter input data stream: ");
 
-    //
+    // Write value in a CSV
+    // Convert them into String
+    let out_data: String = bit_data
+        .into_iter()
+        .map(|b| if b { '1' } else { '0' })
+        .collect();
+    save_in_csv("prueba.csv", &out_data);
 }
 
 ///  Returns the number that the user entered via the console line
@@ -43,6 +51,7 @@ fn read_number(parameter: &str) -> u32 {
         .expect("Invalid number, enter an unsigned nummber "); //handle errors
 
     //TODO: Keep repeating until a positive number has been entered
+
     info!("{} parameter entered:{}", parameter, input_number);
     input_number
 }
@@ -84,4 +93,29 @@ fn read_even_bit_array_from_console(parameter: &str) -> Vec<bool> {
             println!("The bit array must have an even number of bits. Please try again.");
         }
     }
+}
+
+/// Save info into a csv file
+///
+/// # Arguments
+///  -`file_name`(&str): Name of the file to be used
+///
+fn save_in_csv(file_name: &str, values: &str) {
+    //TODO: Add file path checker
+    //Creates a new file if it doesn't already exist
+    let file = OpenOptions::new()
+        .write(true)
+        .append(true)
+        .create(true) // This will create the file if it does not exist
+        .open(file_name)
+        .unwrap();
+
+    // Create a CSV writer from the file
+    let mut wtr = Writer::from_writer(file);
+
+    // Write some records to the CSV file
+    wtr.write_record(&["name", values]).unwrap();
+
+    // Flush the writer to ensure everything is written
+    wtr.flush().unwrap();
 }
