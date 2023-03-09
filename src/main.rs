@@ -1,5 +1,6 @@
 use csv::Writer;
-use env_logger; // Basic logger
+use env_logger;
+// Basic logger
 use std::fs::OpenOptions; //Filesystem
 use std::io; // Input/Ouptut reader // CSV file writter
 
@@ -12,17 +13,28 @@ fn main() {
     env_logger::init();
 
     // Request the input values for the QPSK modulation
-    let _sampling_freq = read_number("Sampling Frequency (Hz): ");
-    let _modulation_freq = read_number("Modulation Frequency (Hz): ");
-    let _simb_freq = read_number("Sampling Frequency (sinbol/s): ");
+    let sampling_freq = read_number("Sampling Frequency (Hz): ");
+    let modulation_freq = read_number("Modulation Frequency (Hz): ");
+    let simb_freq = read_number("Sampling Frequency (sinbol/s): ");
     let bit_data = read_even_bit_array_from_console("Enter input data stream: ");
 
-    // Write value in a CSV
-    // Convert them into String
+    // Get period from frequencies
+    let x: f64 = 1.0;
+    let simb_tem: f64 = x / (f64::from(simb_freq)).powi(2);
+    info!("simb_tem created: {}", simb_tem);
+    let modulation_tem: f64 = x / (f64::from(modulation_freq));
+    info!("modulation_tem created: {}", modulation_tem);
+
+    let sampling_tem: f64 = x / (f64::from(sampling_freq));
+    info!("sampling_tem created: {}", sampling_tem);
+
+    // Convert output into String
     let out_data: String = bit_data
         .into_iter()
         .map(|b| if b { '1' } else { '0' })
         .collect();
+
+    // Write value in a CSV
     save_in_csv("prueba.csv", &out_data);
 }
 
