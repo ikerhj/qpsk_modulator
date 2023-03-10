@@ -2,7 +2,7 @@ use csv::Writer;
 use env_logger;
 // Basic logger
 use std::fs::OpenOptions; //Filesystem
-use std::io; // Input/Ouptut reader // CSV file writter
+use std::io; // Input/Output reader // CSV file writer
 
 #[macro_use]
 extern crate log;
@@ -28,14 +28,11 @@ fn main() {
     let sampling_tem: f64 = x / (f64::from(sampling_freq));
     info!("sampling_tem created: {}", sampling_tem);
 
-    // Convert output into String
-    let out_data: String = bit_data
-        .into_iter()
-        .map(|b| if b { '1' } else { '0' })
-        .collect();
+    // Even bit demoultiplex input data
+    let (odd_bits, even_bits) = demultiplexor_even(bit_data);
 
     // Write value in a CSV
-    save_in_csv("prueba.csv", &out_data);
+    save_in_csv("test.csv", &bit_array_to_string(&odd_bits));
 }
 
 ///  Returns the number that the user entered via the console line
@@ -130,4 +127,43 @@ fn save_in_csv(file_name: &str, values: &str) {
 
     // Flush the writer to ensure everything is written
     wtr.flush().unwrap();
+}
+
+/// Even bit demultiplexor for bit array
+///
+fn demultiplexor_even(data: Vec<bool>) -> (Vec<bool>, Vec<bool>) {
+    let mut odd_data = vec![];
+    let mut even_data = vec![];
+
+    // Go through every single bit in the input array
+    for (i, bit) in data.iter().enumerate() {
+        // Check if the position of the bit is even or odd, i starts at 0
+        if i % 2 == 0 {
+            // Bit position is odd
+            odd_data.push(*bit);
+        } else {
+            // Bit position is even
+            even_data.push(*bit);
+        }
+    }
+    info!(
+        "Input: {} \n Odd bit array:  {} \n  Even bit array: {} ",
+        bit_array_to_string(&data),
+        bit_array_to_string(&odd_data),
+        bit_array_to_string(&even_data)
+    );
+
+    (odd_data, even_data)
+}
+
+fn bit_array_to_string(bits: &[bool]) -> String {
+    let mut s = String::new();
+    for bit in bits {
+        if *bit {
+            s.push('1');
+        } else {
+            s.push('0');
+        }
+    }
+    s
 }
