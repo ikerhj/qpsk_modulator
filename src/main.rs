@@ -114,7 +114,6 @@ fn save_in_csv(file_name: &str, values: &str) {
     //Creates a new file if it doesn't already exist
     let file = OpenOptions::new()
         .write(true)
-        .append(true)
         .create(true) // This will create the file if it does not exist
         .open(file_name)
         .unwrap();
