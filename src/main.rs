@@ -1,6 +1,7 @@
-use bit_vec::BitVec;
+use bit_vec::BitVec; // Bit vector for optimal memory use
 use csv::Writer; // Input/Output reader // CSV file writer
 use env_logger; // Basic logger
+use std::f64::consts::PI; // Pi const value
 use std::fs::OpenOptions; //Filesystem
 use std::io;
 
@@ -32,7 +33,11 @@ fn main() {
 
     // Bits to NRZ signal
     let odd_sig = nrz_encoder(odd_bits.clone(), f64::from(1));
-    let odd_sig = nrz_encoder(even_bits.clone(), f64::from(1));
+    let even_sig = nrz_encoder(even_bits.clone(), f64::from(1));
+
+    let ampli = f64::sqrt(2.0 / simb_tem);
+    let phi1 = create_phi(false, ampli, sampling_freq, f64::from(modulation_freq));
+    let phi2 = create_phi(true, ampli, sampling_freq, f64::from(modulation_freq));
 
     // Write value in a CSV
     save_in_csv("test.csv", odd_bits);
@@ -186,4 +191,20 @@ fn nrz_encoder(data: BitVec, eb: f64) -> Vec<f64> {
     }
     info!("NRZ Encoder - Input: {:?} - Output: {:?}", data, result);
     result
+}
+
+fn create_phi(sin: bool, amplitude: f64, fs: u32, fc: f64) -> Vec<f64> {
+    let mut phi = Vec::new();
+    let phase = 2.0 * PI * fc;
+    if sin {
+        for _i in 0..(fs as usize) {
+            phi.push(amplitude * phase.sin());
+        }
+        return phi;
+    }
+
+    for _i in 0..(fs as usize) {
+        phi.push(amplitude * phase.cos());
+    }
+    return phi;
 }
