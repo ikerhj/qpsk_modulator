@@ -14,14 +14,16 @@ extern crate log;
 
 // Main function
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Welcome the user
+    println!(" Welcome to the QPSK modulator \n Please enter the following values:");
     // Initialize the logger
     env_logger::init();
 
     // Request the input values for the QPSK modulation
     let sampling_freq = read_number("Sampling Frequency (Hz): ");
     let carrier_freq = read_number("Carrier Frequency (Hz): ");
-    let symbol_rate = read_number("Symbol rate (sinbol/s): ");
-    let bit_data = read_even_bit_array_from_console("Enter input data stream: ");
+    let symbol_rate = read_number("Symbol rate (symbol/s): ");
+    let bit_data = read_even_bit_array_from_console("Enter input data stream (bit array): ");
 
     // Create variables related to the signal that has to be created  from input values
     let bit_rate = (f64::from(symbol_rate)) * 2.0; // (bit/second)
@@ -108,7 +110,7 @@ fn read_even_bit_array_from_console(parameter: &str) -> BitVec {
     // Keeps asking the user for a even number of bits
     loop {
         // Shows the name of the parameter that the user has to enter
-        println!("{} (even bit array): ", parameter);
+        println!("{}", parameter);
 
         let mut input = String::new(); // Create a mutable string variable
 
@@ -295,7 +297,7 @@ fn save_qpsk_in_csv(
 
     // Flush the writer to ensure everything is written
     writer.flush().unwrap();
-    info!(
+    println!(
         "QPSK modulated signal samples saved by symbol/line in: {}",
         file_name
     );
@@ -327,6 +329,6 @@ fn plot_signal(
         &BLUE,
     ))?;
 
-    info!("QPSK signal plot created at: {}", file_name);
+    println!("QPSK signal plot created at: {}", file_name);
     Ok(())
 }
