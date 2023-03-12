@@ -26,24 +26,21 @@ fn main() {
     let modulation_tem: f64 = 1.0 / (f64::from(modulation_freq));
     info!("modulation_tem created: {}", modulation_tem);
     let duration = (bit_data.len() as f64) / bit_rate; // Time needed for processing the input bitstream
-    let sample_duration = duration / (sampling_freq as f64); //Duration of a sample for processing the entire input bitstream;
-                                                             // Even bit demoultiplex input data
+    let sample_duration = 1.0 / (sampling_freq as f64); //Duration of a sample for processing the entire input bitstream;
+    let samples = duration / sample_duration;
+    let samples_per_bit = samples / (bit_data.len() as f64);
+    info!(
+        "Time duration: {} - sample_duration: {} -Quantity of samples used :{}",
+        duration, sample_duration, samples
+    ); // Even bit demoultiplex input data
     let (odd_bits, even_bits) = demultiplexor_even(bit_data);
 
     // Bits to NRZ signal
-    let _odd_sig = nrz_encoder(
-        odd_bits.clone(),
-        f64::from(1),
-        f64::from(sampling_freq) * 2.0,
-    );
-    let _even_sig = nrz_encoder(
-        even_bits.clone(),
-        f64::from(1),
-        f64::from(sampling_freq) * 2.0,
-    );
+    let _odd_sig = nrz_encoder(odd_bits.clone(), f64::from(1), samples_per_bit);
+    let _even_sig = nrz_encoder(even_bits.clone(), f64::from(1), samples_per_bit);
 
     // Generate phi signal that is used for multiplying it to NRZ encoded signal
-    let time_space = create_time(0.0, duration, sample_duration);
+    let time_space = create_time(0.0, duration, sample_duration * 2.0);
     let amplitude = f64::sqrt(2.0 / simb_tem);
     let _phi1 = phi_generator(
         false,
@@ -56,9 +53,8 @@ fn main() {
         amplitude,
         time_space.clone(),
         f64::from(modulation_freq),
-    ); // Quadrature element
-
-    // Write value in a CSV
+    ); // Quadrature elements
+       // Write value in a CSV
     save_in_csv("test.csv", odd_bits);
 }
 
@@ -197,21 +193,20 @@ fn demultiplexor_even(data: BitVec) -> (BitVec, BitVec) {
 /// NRZ Encoder
 /// Transforms 1 to sqrt(Eb) and 0 to -sqrt(Eb)
 
-fn nrz_encoder(bit_stream: BitVec, eb: f64, fs: f64) -> Vec<f64> {
+fn nrz_encoder(bit_stream: BitVec, eb: f64, samples_per_bit: f64) -> Vec<f64> {
     let eb_sqrt = f64::sqrt(eb);
     let mut encoded_signal = Vec::new();
 
     for (_i, bit) in bit_stream.iter().enumerate() {
         let amplitude = if bit { eb_sqrt } else { -eb_sqrt };
-        for _i in 0..(fs as usize) {
+        for _i in 0..(samples_per_bit as usize) {
             encoded_signal.push(amplitude);
         }
     }
     info!(
-        "NRZ Encoder - Input bitstream: {:?} -fs :{}  - Output: {:?}  - Output length: {}",
+        "NRZ Encoder - Input bitstream: {:?} -fs :{} - Output length: {:?}",
         bit_stream,
-        fs,
-        encoded_signal,
+        samples_per_bit,
         encoded_signal.len()
     );
     encoded_signal
@@ -235,7 +230,7 @@ fn phi_generator(sin: bool, amplitude: f64, mut time_space: Vec<f64>, fc: f64) -
         }
     }
 
-    info!("Created phi values: {:?}", phi);
+    info!("Created phi value length: {}", phi.len());
     phi
 }
 
@@ -246,9 +241,9 @@ fn create_time(min: f64, max: f64, step: f64) -> Vec<f64> {
         time.push(step_value);
         step_value += step;
     }
-    info!(
-        "Created time : {:?} - Min: {} - Max: {} - Step: {}",
-        time, min, max, step
-    );
+    // info!(
+    //     "Created time : {:?} - Min: {} - Max: {} - Step: {}",
+    //     time, min, max, step
+    // );
     time
 }
