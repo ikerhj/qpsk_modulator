@@ -36,26 +36,30 @@ fn main() {
     let (odd_bits, even_bits) = demultiplexor_even(bit_data);
 
     // Bits to NRZ signal
-    let _odd_sig = nrz_encoder(odd_bits.clone(), f64::from(1), samples_per_bit);
-    let _even_sig = nrz_encoder(even_bits.clone(), f64::from(1), samples_per_bit);
+    let odd_sig = nrz_encoder(odd_bits.clone(), f64::from(1), samples_per_bit);
+    let even_sig = nrz_encoder(even_bits.clone(), f64::from(1), samples_per_bit);
 
     // Generate phi signal that is used for multiplying it to NRZ encoded signal
     let time_space = create_time(0.0, duration, sample_duration * 2.0);
     let amplitude = f64::sqrt(2.0 / simb_tem);
-    let _phi1 = phi_generator(
+    let phi1 = phi_generator(
         false,
         amplitude,
         time_space.clone(),
         f64::from(modulation_freq),
     ); // Inphase element
-    let _phi2 = phi_generator(
+    let phi2 = phi_generator(
         true,
         amplitude,
         time_space.clone(),
         f64::from(modulation_freq),
     ); // Quadrature elements
-       // Write value in a CSV
-    save_in_csv("test.csv", odd_bits);
+
+    let inphase_elements = multiply_vectors(odd_sig, phi1);
+    let quadrature_elements = multiply_vectors(even_sig, phi2);
+    let qpsk_signal = add_vectors(inphase_elements, quadrature_elements);
+    // Write value in a CSV
+    save_in_csv("test.csv", qpsk_signal);
 }
 
 ///  Returns the number that the user entered via the console line
@@ -142,7 +146,7 @@ fn read_even_bit_array_from_console(parameter: &str) -> BitVec {
 /// # Arguments
 ///  -`file_name`(&str): Name of the file to be used
 ///
-fn save_in_csv(file_name: &str, values: BitVec) {
+fn save_in_csv(file_name: &str, values: Vec<f64>) {
     //TODO: Add file path checker
     //Creates a new file if it doesn't already exist
     let file = OpenOptions::new()
@@ -154,12 +158,10 @@ fn save_in_csv(file_name: &str, values: BitVec) {
     // Create a CSV writer from the file
     let mut wtr = Writer::from_writer(file);
 
-    let values_string: String = values
-        .iter()
-        .map(|bit| if bit { '1' } else { '0' })
-        .collect();
+    for elm in values {
+        wtr.write_record(&[elm.to_string()]);
+    }
     // Write some records to the CSV file
-    wtr.write_record(&["name", &values_string]).unwrap();
 
     // Flush the writer to ensure everything is written
     wtr.flush().unwrap();
@@ -246,4 +248,22 @@ fn create_time(min: f64, max: f64, step: f64) -> Vec<f64> {
     //     time, min, max, step
     // );
     time
+}
+
+fn add_vectors(array1: Vec<f64>, array2: Vec<f64>) -> Vec<f64> {
+    let mut sum_array = Vec::new();
+    for (i, value) in array1.iter().enumerate() {
+        sum_array.push(value + array2[i]);
+    }
+    info!("Array sum length: {}", sum_array.len());
+    sum_array
+}
+
+fn multiply_vectors(array1: Vec<f64>, array2: Vec<f64>) -> Vec<f64> {
+    let mut sum_array = Vec::new();
+    for (i, value) in array1.iter().enumerate() {
+        sum_array.push(value * array2[i]);
+    }
+    info!("Array sum length: {}", sum_array.len());
+    sum_array
 }
