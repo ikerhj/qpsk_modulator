@@ -16,28 +16,47 @@ fn main() {
     // Request the input values for the QPSK modulation
     let sampling_freq = read_number("Sampling Frequency (Hz): ");
     let modulation_freq = read_number("Modulation Frequency (Hz): ");
-    let simb_freq = read_number("Sampling Frequency (sinbol/s): ");
+    let symbol_rate = read_number("Symbol rate (sinbol/s): ");
     let bit_data = read_even_bit_array_from_console("Enter input data stream: ");
 
-    // Get period from frequencies
-    let x: f64 = 1.0;
-    let simb_tem: f64 = x / (f64::from(simb_freq)).powi(2);
+    // Get different time and frequency variables
+    let bit_rate = (f64::from(symbol_rate)) * 2.0; // (bit/second)
+    let simb_tem: f64 = 1.0 / bit_rate; //(seconds/symbol)
     info!("simb_tem created: {}", simb_tem);
-    let modulation_tem: f64 = x / (f64::from(modulation_freq));
+    let modulation_tem: f64 = 1.0 / (f64::from(modulation_freq));
     info!("modulation_tem created: {}", modulation_tem);
-    let sampling_tem: f64 = x / (f64::from(sampling_freq));
-    info!("sampling_tem created: {}", sampling_tem);
-
-    // Even bit demoultiplex input data
+    let duration = (bit_data.len() as f64) / bit_rate; // Time needed for processing the input bitstream
+    let sample_duration = duration / (sampling_freq as f64); //Duration of a sample for processing the entire input bitstream;
+                                                             // Even bit demoultiplex input data
     let (odd_bits, even_bits) = demultiplexor_even(bit_data);
 
     // Bits to NRZ signal
-    let odd_sig = nrz_encoder(odd_bits.clone(), f64::from(1));
-    let even_sig = nrz_encoder(even_bits.clone(), f64::from(1));
+    let _odd_sig = nrz_encoder(
+        odd_bits.clone(),
+        f64::from(1),
+        f64::from(sampling_freq) * 2.0,
+    );
+    let _even_sig = nrz_encoder(
+        even_bits.clone(),
+        f64::from(1),
+        f64::from(sampling_freq) * 2.0,
+    );
 
-    let ampli = f64::sqrt(2.0 / simb_tem);
-    let phi1 = create_phi(false, ampli, sampling_freq, f64::from(modulation_freq));
-    let phi2 = create_phi(true, ampli, sampling_freq, f64::from(modulation_freq));
+    // Generate phi signal that is used for multiplying it to NRZ encoded signal
+    let time_space = create_time(0.0, duration, sample_duration);
+    let amplitude = f64::sqrt(2.0 / simb_tem);
+    let _phi1 = phi_generator(
+        false,
+        amplitude,
+        time_space.clone(),
+        f64::from(modulation_freq),
+    ); // Inphase element
+    let _phi2 = phi_generator(
+        true,
+        amplitude,
+        time_space.clone(),
+        f64::from(modulation_freq),
+    ); // Quadrature element
 
     // Write value in a CSV
     save_in_csv("test.csv", odd_bits);
@@ -178,33 +197,58 @@ fn demultiplexor_even(data: BitVec) -> (BitVec, BitVec) {
 /// NRZ Encoder
 /// Transforms 1 to sqrt(Eb) and 0 to -sqrt(Eb)
 
-fn nrz_encoder(data: BitVec, eb: f64) -> Vec<f64> {
+fn nrz_encoder(bit_stream: BitVec, eb: f64, fs: f64) -> Vec<f64> {
     let eb_sqrt = f64::sqrt(eb);
-    let mut result = Vec::new();
+    let mut encoded_signal = Vec::new();
 
-    for (_i, bit) in data.iter().enumerate() {
-        if bit {
-            result.push(eb_sqrt);
-        } else {
-            result.push(-eb_sqrt);
+    for (_i, bit) in bit_stream.iter().enumerate() {
+        let amplitude = if bit { eb_sqrt } else { -eb_sqrt };
+        for _i in 0..(fs as usize) {
+            encoded_signal.push(amplitude);
         }
     }
-    info!("NRZ Encoder - Input: {:?} - Output: {:?}", data, result);
-    result
+    info!(
+        "NRZ Encoder - Input bitstream: {:?} -fs :{}  - Output: {:?}  - Output length: {}",
+        bit_stream,
+        fs,
+        encoded_signal,
+        encoded_signal.len()
+    );
+    encoded_signal
 }
 
-fn create_phi(sin: bool, amplitude: f64, fs: u32, fc: f64) -> Vec<f64> {
+fn phi_generator(sin: bool, amplitude: f64, mut time_space: Vec<f64>, fc: f64) -> Vec<f64> {
     let mut phi = Vec::new();
-    let phase = 2.0 * PI * fc;
-    if sin {
-        for _i in 0..(fs as usize) {
-            phi.push(amplitude * phase.sin());
-        }
-        return phi;
+    let mut phase = Vec::new();
+    // Multiply each element of the time array by the phase of the carrier
+    for elem in time_space.iter_mut() {
+        phase.push(*elem * 2.0 * PI * fc);
     }
 
-    for _i in 0..(fs as usize) {
-        phi.push(amplitude * phase.cos());
+    if sin {
+        for elem in phase.iter_mut() {
+            phi.push(amplitude * elem.sin());
+        }
+    } else {
+        for elem in phase.iter_mut() {
+            phi.push(amplitude * elem.cos());
+        }
     }
-    return phi;
+
+    info!("Created phi values: {:?}", phi);
+    phi
+}
+
+fn create_time(min: f64, max: f64, step: f64) -> Vec<f64> {
+    let mut time = Vec::new();
+    let mut step_value = min;
+    while step_value < max {
+        time.push(step_value);
+        step_value += step;
+    }
+    info!(
+        "Created time : {:?} - Min: {} - Max: {} - Step: {}",
+        time, min, max, step
+    );
+    time
 }
